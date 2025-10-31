@@ -10,21 +10,24 @@ let autoRefreshEnabled = JSON.parse(localStorage.getItem(AUTO_REFRESH_ENABLED_KE
 i18next
     .use(i18nextHttpBackend)
     .use(i18nextBrowserLanguageDetector)
-    .init({
-        load: 'languageOnly',
-        fallbackLng: 'en',
-        detection: { order: ['navigator'] },
-        backend: {
-            loadPath: '/locales/{{lng}}.json'
+    .init(
+        {
+            load: 'languageOnly',
+            fallbackLng: 'en',
+            detection: { order: ['navigator'] },
+            backend: {
+                loadPath: '/locales/{{lng}}.json',
+            },
+            debug: false,
         },
-        debug: false
-    }, (err, t) => {
-        if (err) return console.log('something went wrong loading', err);
-        updateContent();
-        updateLanguage();
-    });
+        (err, t) => {
+            if (err) return console.log('something went wrong loading', err);
+            updateContent();
+            updateLanguage();
+        }
+    );
 
-i18next.on('languageChanged', (lng) => {
+i18next.on('languageChanged', lng => {
     document.documentElement.lang = lng;
     updateLanguage();
 });
@@ -45,7 +48,6 @@ function updateLanguage() {
 }
 
 function formatUptime(seconds) {
-
     const d = Math.floor(seconds / (3600 * 24));
     const h = Math.floor((seconds % (3600 * 24)) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -264,36 +266,51 @@ function togglePin(pid) {
 
 function updatePerCoreUsage(perCoreUsage) {
     const tbody = document.querySelector('#per-core-usage-table tbody');
-    tbody.innerHTML = '';
 
     if (!perCoreUsage || !Array.isArray(perCoreUsage)) {
         return;
     }
 
-    perCoreUsage.forEach((usage, index) => {
-        const row = document.createElement('tr');
-        const usagePercent = usage.toFixed(1);
-
-        // Determine color class based on usage
-        let barClass = '';
-        if (usage >= 80) {
-            barClass = 'high-usage';
-        } else if (usage >= 50) {
-            barClass = 'medium-usage';
-        }
-
-        row.innerHTML = `
-            <td>Core ${index}</td>
-            <td>
-                <div class="core-usage-container">
-                    <span class="core-usage-text">${usagePercent}%</span>
-                    <div class="core-usage-bar-bg">
-                        <div class="core-usage-bar ${barClass}" style="width: ${usage}%"></div>
+    // Check if we need to create the initial structure
+    if (tbody.children.length !== perCoreUsage.length) {
+        tbody.innerHTML = '';
+        perCoreUsage.forEach((usage, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>Core ${index}</td>
+                <td>
+                    <div class="core-usage-container">
+                        <span class="core-usage-text" id="core-usage-text-${index}">0.0%</span>
+                        <div class="core-usage-bar-bg">
+                            <div class="core-usage-bar" id="core-usage-bar-${index}" style="width: 0%"></div>
+                        </div>
                     </div>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // Update existing bars with smooth transitions
+    perCoreUsage.forEach((usage, index) => {
+        const usagePercent = usage.toFixed(1);
+        const textElement = document.getElementById(`core-usage-text-${index}`);
+        const barElement = document.getElementById(`core-usage-bar-${index}`);
+
+        if (textElement && barElement) {
+            textElement.textContent = `${usagePercent}%`;
+            barElement.style.width = `${usage}%`;
+
+            // Remove existing classes
+            barElement.classList.remove('high-usage', 'medium-usage');
+
+            // Add appropriate class based on usage level
+            if (usage >= 80) {
+                barElement.classList.add('high-usage');
+            } else if (usage >= 50) {
+                barElement.classList.add('medium-usage');
+            }
+        }
     });
 }
 
@@ -321,13 +338,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refreshButton) {
         refreshButton.addEventListener('click', () => {
             fetchStats();
-            console.log("Manual refresh triggered.");
+            console.log('Manual refresh triggered.');
         });
     }
 
     const selector = document.getElementById('language-selector');
     if (selector) {
-        selector.addEventListener('change', (event) => {
+        selector.addEventListener('change', event => {
             const chosenLng = event.target.value;
             i18next.changeLanguage(chosenLng, (err, t) => {
                 if (err) return console.error('An error has occurred while changing language', err);
@@ -367,7 +384,7 @@ function startAutoRefresh() {
         clearInterval(autoRefreshInterval);
     }
     autoRefreshInterval = setInterval(fetchStats, 2000);
-    console.log("Auto-refresh started.");
+    console.log('Auto-refresh started.');
 }
 
 /**
@@ -377,16 +394,16 @@ function stopAutoRefresh() {
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
-        console.log("Auto-refresh stopped.");
+        console.log('Auto-refresh stopped.');
     }
 }
 
 /**
- * Starts an independent clock to update the system time every second 
+ * Starts an independent clock to update the system time every second
  */
 function startSystemTimeClock() {
     setInterval(() => {
         document.getElementById('system-time').textContent = new Date().toLocaleTimeString();
     }, 1000);
-    console.log("System time clock started independently.");
+    console.log('System time clock started independently.');
 }
